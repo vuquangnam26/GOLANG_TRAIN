@@ -37,8 +37,11 @@ func main() {
 	printSuppliers("Kayak", "Acme Kayaks", "Bob's Boats", "Crazy Canoes")
 	products := map[string]float64{"Kayak": 275, "Lifeajacket": 48.95}
 	for product, price := range products {
+		var calcFunc func(float64) (float64, bool)
 		if taxAmount, taxDue := calcTax(price); taxDue {
-			fmt.Println("Tax", taxAmount, "prodcut", product)
+			calcFunc = calcTax
+			total, _ := calcFunc(price)
+			fmt.Println("Tax", taxAmount, "prodcut", product, "calc", total)
 		} else {
 			fmt.Println("no tax", "prodcut", product)
 		}
