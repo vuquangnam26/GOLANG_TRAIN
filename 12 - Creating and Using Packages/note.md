@@ -1,0 +1,1 @@
+-- Go phân biệt export và unexport bằng cách viết hoa chữ cái đầu 
