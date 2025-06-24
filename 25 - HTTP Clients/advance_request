@@ -1,0 +1,168 @@
+## 🌐 `http.Client` - Cấu hình & sử dụng nâng cao trong Go
+
+```go
+client := &http.Client{ ... }
+```
+
+---
+
+### 🔧 Các trường cấu hình chính:
+
+| Trường          | Mô tả                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `Transport`     | Dùng để cấu hình cách request được gửi (timeout, proxy, keep-alive...). Nếu không set thì dùng `http.DefaultTransport`. |
+| `CheckRedirect` | Hàm xử lý khi có chuyển hướng (HTTP 3xx). Có thể dùng để giới hạn số lần redirect hoặc ngăn redirect.                   |
+| `Jar`           | Quản lý cookie cho client (cần implement interface `CookieJar`).                                                        |
+| `Timeout`       | Timeout cho toàn bộ request (bao gồm DNS, kết nối, đọc dữ liệu...), kiểu `time.Duration`.                               |
+
+---
+
+### 🔁 Phương thức:
+
+| Phương thức                    | Mô tả                                                               |
+| ------------------------------ | ------------------------------------------------------------------- |
+| `Do(req *http.Request)`        | Gửi một request đầy đủ (GET, POST...) được xây dựng thủ công.       |
+| `CloseIdleConnections()`       | Đóng tất cả các kế nối đang idle (giải phóng tài nguyên).           |
+| `Get(url)`                     | Gửi GET request.                                                    |
+| `Head(url)`                    | Gửi HEAD request.                                                   |
+| `Post(url, contentType, body)` | Gửi POST request với body tuý chỉnh.                                |
+| `PostForm(url, data)`          | Gửi POST request với form dạng `application/x-www-form-urlencoded`. |
+
+---
+
+### ✅ Ví dụ đơn giản:
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func main() {
+    client := &http.Client{
+        Timeout: time.Second * 5,
+    }
+
+    resp, err := client.Get("https://example.com")
+    if err != nil {
+        fmt.Println("Request failed:", err)
+        return
+    }
+    defer resp.Body.Close()
+    fmt.Println("Status code:", resp.StatusCode)
+}
+```
+
+---
+
+### 📝 Ghi nhớ:
+
+- Dùng `client.Do(req)` khi cần gửi request tùy chỉnh (cài header, method, body, v.v.).
+- `Timeout` rất quan trọng để tránh client bị treo mãi nếu server không phản hồi.
+- Nếu dùng `Transport` hoặc `Jar`, nên tái sử dụng `client` thay vì tạo mới liên tục (hiệu suất cao hơn).
+- `CloseIdleConnections()` hữu ích khi muốn đóng các kế nối không còn dùng (ví dụ khi đổi proxy hoặc transport mới).
+
+## 🚀 Cấu hình `http.Client` nâng cao trong Go
+
+Gói `net/http` cho phép bạn tùy chỉnh hành vi của client thông qua struct `http.Client`. Dưới đây là mô tả chi tiết các field và method hữu ích:
+
+---
+
+### 🛠 Các Field chính trong `http.Client`
+
+#### 1. `Transport`
+
+- Loại: `http.RoundTripper`
+- Dùng để cấu hình cách gửi request (timeout, keep-alive, proxy, TLS, ...)
+- Mặc định là `http.DefaultTransport`
+
+```go
+client := &http.Client{
+    Transport: &http.Transport{
+        MaxIdleConns: 10,
+        IdleConnTimeout: 30 * time.Second,
+    },
+}
+```
+
+#### 2. `CheckRedirect`
+
+- Loại: `func(req *http.Request, via []*http.Request) error`
+- Tùy chỉnh cách xử lý redirect (ví dụ: dừng redirect hoặc ghi log)
+
+```go
+client := &http.Client{
+    CheckRedirect: func(req *http.Request, via []*http.Request) error {
+        return http.ErrUseLastResponse // không cho phép redirect
+    },
+}
+```
+
+#### 3. `Jar`
+
+- Loại: `http.CookieJar`
+- Quản lý cookie (lưu/truy xuất)
+
+```go
+jar, _ := cookiejar.New(nil)
+client := &http.Client{
+    Jar: jar,
+}
+```
+
+#### 4. `Timeout`
+
+- Loại: `time.Duration`
+- Thời gian tối đa cho 1 request (bao gồm kết nối + response)
+
+```go
+client := &http.Client{
+    Timeout: 10 * time.Second,
+}
+```
+
+---
+
+### 🔄 Các Method chính
+
+#### `Do(request)`
+
+- Gửi request tuỳ chỉnh
+
+```go
+req, _ := http.NewRequest("GET", "https://example.com", nil)
+resp, err := client.Do(req)
+```
+
+#### `CloseIdleConnections()`
+
+- Đóng tất cả kết nối đang chờ (idle)
+
+```go
+client.CloseIdleConnections()
+```
+
+#### `Get`, `Head`, `Post`, `PostForm`
+
+- Gọi các method HTTP tương ứng
+- Sử dụng `http.Client` tùy chỉnh thay vì `http.Get()` mặc định
+
+```go
+resp, err := client.Get("https://example.com")
+```
+
+---
+
+### 💡 Ghi nhớ
+
+- Dùng `Timeout` để tránh treo ứng dụng khi server không phản hồi.
+- Dùng `Jar` nếu cần lưu cookie qua nhiều request.
+- Dùng `Transport` để tùy chỉnh proxy, TLS config, retry, keep-alive.
+- Luôn `defer resp.Body.Close()` sau khi xử lý xong response.
+
+---
+
+Bạn có thể mở rộng thêm về proxy, TLS config hoặc custom RoundTripper nếu cần.

@@ -1,0 +1,100 @@
+## 📦 Tạo Multipart Form trong Go
+
+Go hỗ trợ việc tạo và gửi multipart/form-data (thường dùng trong form upload file) thông qua gói `mime/multipart`. Dưới đây là mô tả chi tiết các hàm và cách sử dụng chúng.
+
+---
+
+### 📌 Các hàm tạo multipart form
+
+#### 1. `CreateFormField(fieldname string) (io.Writer, error)`
+
+* ✅ Tạo một **trường dữ liệu bình thường (text field)** trong multipart form.
+* 🧠 Dùng khi bạn muốn gửi dữ liệu như tên, email, v.v.
+
+**Ví dụ:**
+
+```go
+fieldWriter, _ := writer.CreateFormField("username")
+fieldWriter.Write([]byte("namdev"))
+```
+
+Hoặc ngắn gọn hơn:
+
+```go
+writer.WriteField("username", "namdev")
+```
+
+---
+
+#### 2. `CreateFormFile(fieldname, filename string) (io.Writer, error)`
+
+* ✅ Tạo **trường dạng file** (ví dụ upload ảnh, PDF,...).
+* 📄 `fieldname`: tên form field.
+* 🖼️ `filename`: tên file hiển thị khi upload.
+
+**Ví dụ:**
+
+```go
+part, _ := writer.CreateFormFile("avatar", "profile.jpg")
+io.Copy(part, file)
+```
+
+---
+
+#### 3. `FormDataContentType() string`
+
+* ✅ Trả về giá trị `Content-Type` phù hợp với multipart form, bao gồm cả thông tin `boundary`.
+
+**Ví dụ:**
+
+```go
+req.Header.Set("Content-Type", writer.FormDataContentType())
+```
+
+---
+
+#### 4. `Close() error`
+
+* ✅ Kết thúc form, ghi "boundary đóng" vào cuối dữ liệu form.
+* Bắt buộc phải gọi trước khi gửi request.
+
+**Ví dụ:**
+
+```go
+writer.Close()
+```
+
+---
+
+### 🔁 Ví dụ tổng quát tạo và gửi multipart form
+
+```go
+body := &bytes.Buffer{}
+writer := multipart.NewWriter(body)
+
+// Thêm field text
+writer.WriteField("username", "namdev")
+
+// Thêm file
+file, _ := os.Open("file.txt")
+defer file.Close()
+part, _ := writer.CreateFormFile("resume", "file.txt")
+io.Copy(part, file)
+
+// Kết thúc form
+writer.Close()
+
+// Gửi request
+req, _ := http.NewRequest("POST", "http://localhost:5000/upload", body)
+req.Header.Set("Content-Type", writer.FormDataContentType())
+
+http.DefaultClient.Do(req)
+```
+
+---
+
+### 💡 Ghi nhớ:
+
+* Multipart form rất hữu ích khi cần gửi dữ liệu kèm file.
+* Đừng quên gọi `Close()` trước khi gửi request.
+* `FormDataContentType()` luôn phải được set vào Header để server hiểu cách đọc dữ liệu gửi lên.

@@ -1,0 +1,45 @@
+## 📦 Các Trường và Phương Thức của `http.Response` trong Go
+
+Gói `net/http` trong Go định nghĩa struct `http.Response`, đại diện cho phản hồi HTTP từ server. Dưới đây là các trường và phương thức quan trọng:
+
+---
+
+### 🔍 Trường phổ biến
+
+| Trường             | Kiểu dữ liệu           | Mô tả                                                |
+| ------------------ | ---------------------- | ---------------------------------------------------- |
+| `StatusCode`       | `int`                  | Mã trạng thái HTTP (vd: `200`, `404`)                |
+| `Status`           | `string`               | Chuỗi mô tả trạng thái (vd: "200 OK")                |
+| `Proto`            | `string`               | Phiên bản HTTP (vd: "HTTP/1.1")                      |
+| `Header`           | `map[string][]string`  | Header của response                                  |
+| `Body`             | `io.ReadCloser`        | Dữ liệu thân response, cần `defer resp.Body.Close()` |
+| `Trailer`          | `map[string][]string`  | Header ở phần trailer (sau body)                     |
+| `ContentLength`    | `int64`                | Độ dài nội dung nếu có header Content-Length         |
+| `TransferEncoding` | `[]string`             | Các phương pháp mã hóa (vd: chunked)                 |
+| `Close`            | `bool`                 | `true` nếu server muốn đóng kết nối                  |
+| `Uncompressed`     | `bool`                 | `true` nếu nội dung đã được giải nén                 |
+| `Request`          | `*http.Request`        | Request đã sinh ra response này                      |
+| `TLS`              | `*tls.ConnectionState` | Thông tin kết nối bảo mật nếu dùng HTTPS             |
+
+---
+
+### 🧰 Phương thức hữu ích
+
+| Phương thức        | Mô tả                                                          |
+| ------------------ | -------------------------------------------------------------- |
+| `Cookies()`        | Trả về slice `[]*http.Cookie` từ header Set-Cookie             |
+| `Location()`       | Trả về giá trị header Location (cho redirect), kiểu `*url.URL` |
+| `Write(io.Writer)` | Ghi thông tin response ra writer (vd: os.Stdout)               |
+
+---
+
+### 📌 Lưu ý khi xử lý Response
+
+* Luôn gọi `defer resp.Body.Close()` để giải phóng tài nguyên.
+* Dùng `io.ReadAll(resp.Body)` hoặc `json.NewDecoder(resp.Body)` để đọc nội dung.
+* Kiểm tra `resp.StatusCode` để xử lý lỗi hoặc logic tương ứng.
+* Dùng `Header.Get("Content-Type")` để kiểm tra định dạng trả về.
+
+---
+
+✅ File này mô tả chi tiết về cách sử dụng `http.Response` để làm việc với phản hồi từ HTTP server.
