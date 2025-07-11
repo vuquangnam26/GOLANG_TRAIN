@@ -1,59 +1,127 @@
-# 📘 Go reflect: Kiểm tra chiều và kiểu dữ liệu của Channel
+# ✨ Đồng bộ trong Go: Race Condition, sync.Mutex, WaitGroup, Atomic
 
-Tài liệu này giải thích cách sử dụng package `reflect` trong Go để kiểm tra **channel direction** (chiều gửi/nhận của channel) và **kiểu dữ liệu chứa trong channel** thông qua hai phương thức: `ChanDir()` và `Elem()`.
+## ⚠️ Vấn đề: Race Condition
 
----
+Khi nhiều goroutine truy cập và ghi cùng một biến, các thao tác như `counter++` có thể bị gây lỗi do **không phải là thao tác nguyên tử**. Dẫn đến kết quả sai hoặc khác nhau mỗi lần chạy.
 
-## 🔍 `ChanDir()` – Kiểm tra chiều của channel
-
-Phương thức `ChanDir()` trả về giá trị cho biết channel đó được dùng để **gửi**, **nhận**, hay **cả hai**.
-
-### ✅ Bảng giá trị `ChanDir`:
-
-| Giá trị hằng số (`reflect`) | Ý nghĩa                       | Biểu diễn dạng chuỗi |
-| --------------------------- | ----------------------------- | -------------------- |
-| `reflect.RecvDir`           | Chỉ nhận dữ liệu              | `<-chan T`           |
-| `reflect.SendDir`           | Chỉ gửi dữ liệu               | `chan<- T`           |
-| `reflect.BothDir`           | Gửi và nhận dữ liệu (2 chiều) | `chan T`             |
-
----
-
-## 📦 `Elem()` – Kiểm tra kiểu dữ liệu chứa trong channel
-
-Phương thức `Elem()` trả về **kiểu dữ liệu** mà channel chứa (loại dữ liệu được gửi/nhận qua channel).
-
-Ví dụ:
+**Ví dụ:**
 
 ```go
-ch := make(chan int)
-t := reflect.TypeOf(ch)
-fmt.Println(t.Elem()) // Output: int
+var counter int
+
+for i := 0; i < 3; i++ {
+    go func() {
+        for j := 0; j < 5000; j++ {
+            counter++ // Sai: không đồng bộ
+        }
+    }()
+}
 ```
 
-# 📘 Go reflect: Các phương thức thao tác với channel bằng reflection
-
-Gói `reflect` trong Go cho phép bạn thao tác với channel một cách linh hoạt trong runtime. Dưới đây là các phương thức quan trọng của `reflect.Value` khi làm việc với channel.
+Dự kiến: 3 \* 5000 = 15000 ❤️ Thực tế: sai số, mỗi lần mỗi khác.
 
 ---
 
-## 📦 1. `Send(val reflect.Value)`
+## 🔐 sync.Mutex
 
-- **Mục đích**: Gửi một giá trị vào channel.
-- **Chặn**: Có. Hàm sẽ chờ đến khi gửi được.
-- **Cách dùng**:
+### ✅ Giải pháp: Dùng mutex để khoá truy cập
+
+### Các phương thức:
+
+| Phương thức | Mô tả                                                 |
+| ----------- | ----------------------------------------------------- |
+| `Lock()`    | Khoá mutex. Nếu đang bị khoá thì block goroutine chờ. |
+| `Unlock()`  | Mở khoá. Bắt buộc phải gọi sau `Lock`.                |
+
+### Ví dụ:
 
 ```go
-v := reflect.ValueOf(myChan)
-v.Send(reflect.ValueOf(10))
+var counter int
+var mutex sync.Mutex
+
+func doSum(n int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    for i := 0; i < n; i++ {
+        mutex.Lock()
+        counter++
+        mutex.Unlock()
+    }
+}
 ```
 
-| Thành phần           | Mục đích                                   |
-| -------------------- | ------------------------------------------ |
-| `reflect.Select`     | Chạy select động từ slice các `SelectCase` |
-| `reflect.SelectCase` | Mô tả từng dòng case trong select          |
-| `Chan`               | Channel sẽ thao tác                        |
-| `Dir`                | Hướng: gửi, nhận, hay default              |
-| `Send`               | Giá trị sẽ gửi nếu là thao tác `Send`      |
-| `SelectSend`         | Gửi dữ liệu vào channel                    |
-| `SelectRecv`         | Nhận dữ liệu từ channel                    |
-| `SelectDefault`      | Mặc định nếu không channel nào sẵn sàng    |
+---
+
+## 🧠 sync.RWMutex
+
+RWMutex cho phép nhiều goroutine **đọc song song** nhưng chỉ cho phép **một goroutine ghi tại một thời điểm**.
+
+### Các phương thức:
+
+| Phương thức | Mô tả                                                   |
+| ----------- | ------------------------------------------------------- |
+| `RLock()`   | Lấy read-lock. Block nếu đang có write-lock.            |
+| `RUnlock()` | Giải phóng read-lock.                                   |
+| `Lock()`    | Lấy write-lock. Block nếu đang có read/write-lock khác. |
+| `Unlock()`  | Giải phóng write-lock.                                  |
+| `RLocker()` | Trả về `Locker` interface dành cho read-lock.           |
+
+### Khi nào dùng RWMutex?
+
+- Khi có nhiều thao tác đọc và ít thao tác ghi.
+- Cho phép tăng hiệu năng do nhiều goroutine được phép đọc đồng thời.
+
+---
+
+## 🤝 sync.WaitGroup
+
+Dùng để chờ các goroutine hoàn thành trước khi main() thoát.
+
+### Lưu ý:
+
+- `Add(n)` trước khi start goroutine
+- `Done()` đúng số lần
+- `Wait()` để chờ hoàn thành
+
+### Lỗi thường gặp:
+
+| Lỗi                      | Nguyên nhân                                             |
+| ------------------------ | ------------------------------------------------------- |
+| `Done()` > `Add()`       | Panic: counter âm                                       |
+| `Done()` < `Add()`       | Wait() chờ mãi                                          |
+| Truyền giá trị WaitGroup | Mỗi goroutine dùng bản sao khác nhau, Wait() chờ vô tín |
+
+### Ví dụ panic do `Done()` nhiều hơn `Add()`:
+
+```go
+var wg sync.WaitGroup
+wg.Add(1)
+wg.Done()
+wg.Done() // ❌ panic: sync: negative WaitGroup counter
+```
+
+---
+
+## ⚡ sync/atomic
+
+Dùng cho các thao tác nguyên tử như tăng biến.
+
+```go
+import "sync/atomic"
+var counter int64
+atomic.AddInt64(&counter, 1)
+```
+
+---
+
+## 🔍 Tổng kết
+
+| Kỹ thuật       | Giải quyết gì?                        |
+| -------------- | ------------------------------------- |
+| `sync.Mutex`   | Truy cập biến chung đồng bộ           |
+| `sync.RWMutex` | Cho phép đọc đồng thời, ghi độc quyền |
+| `WaitGroup`    | Chờ goroutine hoàn thành              |
+| `atomic`       | Tăng giá trị nguyên tử                |
+
+---
+
+> ✨ Luôn truyền `*sync.WaitGroup` thay vì `sync.WaitGroup` để các goroutine cùng thao tác trên một địa chỉ chung!
