@@ -19,12 +19,12 @@ func (l *DefaultLogger) write(level LogLevel, message string) {
 		l.loggers[level].Output(2, message)
 	}
 }
- func (l *DefaultLogger) Debug(msg string) {
- l.write(Debug, msg)
- }
- func (l *DefaultLogger) Debugf(template string, vals ...interface{}) {
- l.write(Debug, fmt.Sprintf(template, vals...))
- }
+func (l *DefaultLogger) Debug(msg string) {
+	l.write(Debug, msg)
+}
+func (l *DefaultLogger) Debugf(template string, vals ...interface{}) {
+	l.write(Debug, fmt.Sprintf(template, vals...))
+}
 func (l *DefaultLogger) Trace(msg string) {
 	l.write(Trace, msg)
 }
@@ -55,5 +55,4 @@ func (l *DefaultLogger) Panicf(template string, vals ...interface{}) {
 	if l.triggerPanic {
 		panic(formattedMsg)
 	}
-}Error executing Lua callback: ...l/nvim-data/lazy/lazy.nvim/lua/lazy/core/handler/cmd.lua:48: Wrong number of arguments stack traceback:                                                                                                                [C]: in function 'cmd'                                                                                                  ...l/nvim-data/lazy/lazy.nvim/lua/lazy/core/handler/cmd.lua:48: in function <...l/nvim-data/lazy/lazy.nvim/lua/lazy/core/handler/cmd.lua:16> 
-
+}
