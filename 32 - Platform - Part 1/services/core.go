@@ -38,6 +38,8 @@ func resolveServiceFromValue(c context.Context, val reflect.Value) (err error) {
 	} else if binding, found := services[serviesType]; found {
 		if binding.lifecycle == Scoped {
 			resolveScopedService(c, val, binding)
+		} else {
+			val.Elem().Set(invokeFunction(c, binding.factoryFunc)[0])
 		}
 	}
 	return
