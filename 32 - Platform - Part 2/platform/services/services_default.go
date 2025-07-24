@@ -1,8 +1,8 @@
 package services
 
 import (
-	"logging/config"
-	"logging/logging"
+	"platform/config"
+	"platform/logging"
 )
 
 func RegisterDefaultServices() {

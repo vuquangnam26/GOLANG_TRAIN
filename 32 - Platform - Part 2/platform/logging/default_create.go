@@ -2,8 +2,8 @@ package logging
 
 import (
 	"log"
-	"config"
 	"os"
+	"platform/config"
 	"strings"
 )
 

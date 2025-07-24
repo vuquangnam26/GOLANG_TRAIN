@@ -1,4 +1,4 @@
-package platform
+package pipeline
 
 import "net/http"
 
@@ -20,5 +20,5 @@ func (mwc *ComponentContext) GetError() error {
 type MiddlewareComponent interface {
 	Init()
 
-	ProcessRequest(w http.ResponseWriter, r *http.Request)
+	ProcessRequest(context *ComponentContext, next func(*ComponentContext))
 }
